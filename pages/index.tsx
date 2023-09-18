@@ -1,7 +1,9 @@
-import Image from 'next/image'
-import { Inter } from 'next/font/google'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { OpenAI } from "langchain/llms/openai";
+import { BufferMemory } from 'langchain/memory';
+import { ConversationChain } from 'langchain/chains';
+import { Question } from '@/components/question';
+import { Response } from '@/components/response';
 
 interface Message {
   type: string;
@@ -10,20 +12,45 @@ interface Message {
 
 export default function Home() {
   const [conversation, setConversation] = useState<Message[]>([])
+  const [chain, setChain] = useState<ConversationChain>()
+  const [responseOnline, setResponseOnline] = useState('')
 
-  const llm = new OpenAI({
-    openAIApiKey: "",
-    modelName: 'gpt-3.5-turbo',
-    temperature: 0
-  });
+  useEffect(() => {
+    const llm = new OpenAI({
+      openAIApiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
+      modelName: 'gpt-3.5-turbo',
+      temperature: 0,
+      streaming: true
+    });
+  
+    const memory = new BufferMemory();
+    const conversationChain = new ConversationChain({ llm: llm, memory: memory });
+    setChain(conversationChain)
+  }, [])
 
   const onSubmitChat = async(e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
 
+    if(!chain) return;
+
     const prompt = e.currentTarget.chatText.value;
-    const response = await llm.call(prompt);
+    e.currentTarget.chatText.value = ''
+    setConversation(conversation => [...conversation, {type: 'human', message: prompt}])
+
+    const response = await chain.call({
+      input: prompt,
+      callbacks: [
+        {
+          handleLLMNewToken(token: string) {
+            setResponseOnline(prev => prev + token)
+          }
+        }
+      ]
+    });
     
-    setConversation([...conversation, {type: 'human', message: prompt}, {type: 'ai', message: response}])
+    setConversation(conversation =>[...conversation, {type: 'ai', message: response.response}])
+
+    setResponseOnline('')
   }
 
   return (
@@ -37,21 +64,15 @@ export default function Home() {
               
             {
               conversation.map((message, index) => 
-                message.type === 'human' ?
-                <div key={index} className="chat-message bot flex justify-end mb-2">
-                  <div className="bg-green-200 rounded-lg px-4 py-2">
-                    {message.message}
-                  </div>
-                </div>
-                : <div key={index} className="chat-message user flex justify-start mb-2">
-                  <div className="bg-blue-200 rounded-lg px-4 py-2 whitespace-pre-line" style={{ direction: 'ltr' }}>
-                  {message.message}
-                  </div>
-                </div>
+                message.type === 'human' 
+                ? <Question key={index} message={message.message} />
+                : <Response key={index} message={message.message} />
               )
             }
-
-
+            {
+              responseOnline ? <Response message={responseOnline} /> : ''
+            }
+            
             </div>
           </div>
           <form onSubmit={onSubmitChat} className="w-full text-center mt-4 flex items-stretch">
@@ -73,6 +94,5 @@ export default function Home() {
       </div>
     </section>
   </main>
-
   )
 }
