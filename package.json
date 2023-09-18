@@ -2,6 +2,11 @@
   "name": "gpt-chatbot-langchain-js",
   "version": "0.1.0",
   "private": true,
+  "author": {
+    "name": "GeraDeluxer",
+    "email": "gerardoangeln@gmail.com",
+    "url": "https://mireino.com"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
