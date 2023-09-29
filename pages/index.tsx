@@ -1,7 +1,4 @@
 import { useEffect, useState } from 'react'
-import { OpenAI } from "langchain/llms/openai";
-import { BufferMemory } from 'langchain/memory';
-import { ConversationChain } from 'langchain/chains';
 import { Question } from '@/components/question';
 import { Response } from '@/components/response';
 
@@ -12,6 +9,28 @@ interface Message {
 
 export default function Home() {
   const [conversation, setConversation] = useState<Message[]>([])
+  const [session, setSession] = useState('')
+
+useEffect(() => {
+
+  const loadMessages = async() => {
+    const responseData = await fetch('http://localhost:3000/api/message')
+    
+    const messages = await responseData.json()
+    messages.message.map((message: any) => {
+      message.type === 'human' 
+      ? setConversation(conversation => [...conversation, {type: 'human', message: message.data.content}])
+      : setConversation(conversation => [...conversation, {type: 'ai', message: message.data.content}])
+    })
+    
+    setSession(messages.session)
+  }
+
+  loadMessages()
+
+}, [])
+
+
 
   const onSubmitChat = async(e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -25,7 +44,7 @@ export default function Home() {
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ prompt })
+      body: JSON.stringify({ prompt, session })
     })
 
     const response = await responseData.json();
