@@ -12,45 +12,26 @@ interface Message {
 
 export default function Home() {
   const [conversation, setConversation] = useState<Message[]>([])
-  const [chain, setChain] = useState<ConversationChain>()
-  const [responseOnline, setResponseOnline] = useState('')
-
-  useEffect(() => {
-    const llm = new OpenAI({
-      openAIApiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
-      modelName: 'gpt-3.5-turbo',
-      temperature: 0,
-      streaming: true
-    });
-  
-    const memory = new BufferMemory();
-    const conversationChain = new ConversationChain({ llm: llm, memory: memory });
-    setChain(conversationChain)
-  }, [])
 
   const onSubmitChat = async(e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-
-    if(!chain) return;
 
     const prompt = e.currentTarget.chatText.value;
     e.currentTarget.chatText.value = ''
     setConversation(conversation => [...conversation, {type: 'human', message: prompt}])
 
-    const response = await chain.call({
-      input: prompt,
-      callbacks: [
-        {
-          handleLLMNewToken(token: string) {
-            setResponseOnline(prev => prev + token)
-          }
-        }
-      ]
-    });
-    
-    setConversation(conversation =>[...conversation, {type: 'ai', message: response.response}])
+    const responseData = await fetch('http://localhost:3000/api/message', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ prompt })
+    })
 
-    setResponseOnline('')
+    const response = await responseData.json();
+
+    
+    setConversation(conversation =>[...conversation, {type: 'ai', message: response.message}])
   }
 
   return (
@@ -69,10 +50,6 @@ export default function Home() {
                 : <Response key={index} message={message.message} />
               )
             }
-            {
-              responseOnline ? <Response message={responseOnline} /> : ''
-            }
-            
             </div>
           </div>
           <form onSubmit={onSubmitChat} className="w-full text-center mt-4 flex items-stretch">
