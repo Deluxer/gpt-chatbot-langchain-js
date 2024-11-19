@@ -1,8 +1,8 @@
 import { configMongodb } from "@/utills/config-mongo";
 import { ConversationChain } from "langchain/chains";
-import { ChatOpenAI } from "langchain/chat_models/openai";
+import { ChatOpenAI } from "@langchain/openai";
 import { BufferMemory } from "langchain/memory";
-import { MongoDBChatMessageHistory } from "langchain/stores/message/mongodb";
+import { MongoDBChatMessageHistory } from "@langchain/mongodb";
 import { ObjectId } from "mongodb";
 import { NextApiRequest, NextApiResponse } from "next";
 
@@ -15,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const llm = new ChatOpenAI({
             openAIApiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
-            modelName: 'gpt-3.5-turbo',
+            modelName: 'gpt-4o-mini',
             temperature: 0,
             streaming: true
         });

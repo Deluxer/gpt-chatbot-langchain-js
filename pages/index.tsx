@@ -11,26 +11,23 @@ export default function Home() {
   const [conversation, setConversation] = useState<Message[]>([])
   const [session, setSession] = useState('')
 
-useEffect(() => {
+  useEffect(() => {
+    const loadMessages = async() => {
+      const responseData = await fetch('http://localhost:3000/api/message')
+      
+      const messages = await responseData.json()
+      messages.message.map((message: any) => {
+        message.type === 'human' 
+        ? setConversation(conversation => [...conversation, {type: 'human', message: message.data.content}])
+        : setConversation(conversation => [...conversation, {type: 'ai', message: message.data.content}])
+      })
+      
+      setSession(messages.session)
+    }
 
-  const loadMessages = async() => {
-    const responseData = await fetch('http://localhost:3000/api/message')
-    
-    const messages = await responseData.json()
-    messages.message.map((message: any) => {
-      message.type === 'human' 
-      ? setConversation(conversation => [...conversation, {type: 'human', message: message.data.content}])
-      : setConversation(conversation => [...conversation, {type: 'ai', message: message.data.content}])
-    })
-    
-    setSession(messages.session)
-  }
+    loadMessages()
 
-  loadMessages()
-
-}, [])
-
-
+  }, [])
 
   const onSubmitChat = async(e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -49,7 +46,6 @@ useEffect(() => {
 
     const response = await responseData.json();
 
-    
     setConversation(conversation =>[...conversation, {type: 'ai', message: response.message}])
   }
 
@@ -59,7 +55,7 @@ useEffect(() => {
       <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="container mx-auto my-10 bg-white shadow-lg rounded-lg p-4">
           <div className="text-center text-2xl font-bold mb-4">Botcito</div>
-          <div className="chat-container h-96 overflow-y-scroll p-4 border border-gray-300 rounded-lg"> {/* Aumenta la altura aquí */}
+          <div className="chat-container h-96 overflow-y-scroll p-4 border border-gray-300 rounded-lg">
             <div className="flex flex-col space-y-2">
               
             {
