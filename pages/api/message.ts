@@ -1,23 +1,25 @@
-import { configMongodb } from "@/utills/config-mongo";
 import { ConversationChain } from "langchain/chains";
 import { ChatOpenAI } from "@langchain/openai";
+import { Ollama } from "@langchain/ollama";
 import { BufferMemory } from "langchain/memory";
-import { MongoDBChatMessageHistory } from "@langchain/mongodb";
+import { MongoDBChatMessageHistory, MongoDBAtlasVectorSearch } from "@langchain/mongodb";
 import { ObjectId } from "mongodb";
 import { NextApiRequest, NextApiResponse } from "next";
+import { MongoClient } from "mongodb";
+
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
 
-    const collection = await configMongodb()
+    const client = new MongoClient(process.env.MONGODB_ATLAS_URI || "");
+    await client.connect();
+    const collection = client.db("chatbot").collection("messages"); 
 
     if (req.method === 'POST') {
         const { prompt, session } = req.body
 
-        const llm = new ChatOpenAI({
-            openAIApiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
-            modelName: 'gpt-4o-mini',
-            temperature: 0,
-            streaming: true
+        const ollama = new Ollama({
+            baseUrl: "http://127.0.0.1:11434",
+            model: "qwen2.5-coder:14b",
         });
 
         const memory = new BufferMemory({
@@ -26,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 sessionId: session,
             })
         });
-        const chain = new ConversationChain({ llm: llm, memory: memory });
+        const chain = new ConversationChain({ llm: ollama, memory: memory });
 
         const response = await chain.call({
             input: prompt,
@@ -37,7 +39,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const messages = await collection.find({}).next()
         let sessionId: any;
 
-        sessionId = messages ? messages._id : new ObjectId().toString();
+
+        sessionId = messages ? messages.sessionId : new ObjectId().toString();
 
         res.status(404).json({ session: sessionId ,message: messages ? messages?.messages: [] })
     } else {
